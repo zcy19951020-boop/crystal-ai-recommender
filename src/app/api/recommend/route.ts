@@ -37,13 +37,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '无效的请求' }, { status: 400 })
   }
 
-  const { sunSign, birthDate, yearPillar, budget } = body
+  const { sunSign, birthDate, yearPillar, dayPillar, budget } = body
 
-  if (!birthDate || !yearPillar?.element) {
+  if (!birthDate || !dayPillar?.element) {
     return NextResponse.json({ error: '请填写完整信息' }, { status: 400 })
   }
 
-  // 根据五行自动推荐相关水晶
+  // 使用日柱五行进行推荐
+  const element = dayPillar.element
+
   const elementMap: { [key: string]: string[] } = {
     '木': ['绿幽灵', '绿发晶', '海蓝宝', '青金石'],
     '火': ['紫水晶', '粉水晶', '红玛瑙', '石榴石', '红虎眼', '紫牙乌'],
@@ -52,9 +54,8 @@ export async function POST(request: NextRequest) {
     '水': ['黑曜石', '海蓝宝', '蓝虎眼', '托帕石', '青金石']
   }
 
-  const recommendedCrystals = elementMap[yearPillar.element] || ['白水晶', '紫水晶']
+  const recommendedCrystals = elementMap[element] || ['白水晶', '紫水晶']
 
-  // 构建水晶列表供 AI 参考
   const crystalList = crystalDB
     .filter(c => recommendedCrystals.includes(c.name))
     .map(c => `${c.name}（${c.element}行，${c.keywords.join('、')}）`)
@@ -65,27 +66,28 @@ export async function POST(request: NextRequest) {
 ## 用户信息
 - 太阳星座：${sunSign || '未知'}
 - 出生日期：${birthDate}
-- 八字年柱：${yearPillar?.stem || ''}${yearPillar?.branch || ''}（五行属${yearPillar?.element || '未知'}）
+- 八字年柱：${yearPillar?.stem || ''}${yearPillar?.branch || ''}（${yearPillar?.element || '未知'}）
+- 八字日柱：${dayPillar?.stem || ''}${dayPillar?.branch || ''}（**五行属${dayPillar?.element || '未知'}**，这是最重要的判断依据）
 - 预算范围：${budget || '不限'}
 
 ## 你拥有以下水晶库存（按五行分类）：
 ${crystalList}
 
-## 推荐规则
-1. 根据用户的五行属性，推荐对应五行水晶
-2. 参考预算范围推荐合适价位
-3. 结合星座特质给出个性化建议
-4. 直接给出推荐结果，不需要追问用户
+## 推荐规则（重要！）
+1. **主要依据日柱五行**来判断用户适合的水晶，这是最重要的判断标准
+2. 五行相生相克：木生火、火生土、土生金、金生水、水生木
+3. 根据预算推荐合适价位的水晶
+4. 结合星座特质给出建议
 
 ## 输出格式
 请用中文回复，包含：
-1. 推荐水晶名称（1-3种，按推荐优先级排序）
-2. 每种水晶的五行属性和寓意
-3. 为什么适合该用户（结合五行+星座）
+1. 推荐水晶名称（1-3种）
+2. 每种水晶的五行属性和美好寓意
+3. 为什么适合该用户（重点结合日柱五行）
 4. 参考价格区间
 5. 使用建议
 
-注意：只推荐真实存在的水晶，价格仅供参考。`
+注意：只推荐真实存在的水晶。`
 
   try {
     const controller = new AbortController()
@@ -112,7 +114,6 @@ ${crystalList}
     clearTimeout(timeoutId)
 
     if (!response.ok) {
-      const errorText = await response.text()
       return NextResponse.json({ error: `AI服务错误: ${response.status}` }, { status: 500 })
     }
 

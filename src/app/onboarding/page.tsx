@@ -3,8 +3,8 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, ArrowRight, Check, Sparkles } from 'lucide-react'
-import { getZodiacSign, getYearPillar } from '@/lib/zodiac'
+import { ArrowLeft, ArrowRight, Check } from 'lucide-react'
+import { getZodiacSign, getEightCharacters } from '@/lib/zodiac'
 
 const budgetOptions = [
   { id: '入门级', label: '入门级', range: '¥100-300', desc: '小晶体/手串入门款' },
@@ -17,7 +17,7 @@ export default function Onboarding() {
   const [step, setStep] = useState(1)
   const [birthDate, setBirthDate] = useState('')
   const [zodiac, setZodiac] = useState('')
-  const [yearPillar, setYearPillar] = useState({ stem: '', branch: '', element: '' })
+  const [eightChars, setEightChars] = useState<any>(null)
   const [budget, setBudget] = useState('')
 
   // 处理生日输入
@@ -30,14 +30,14 @@ export default function Onboarding() {
       const sign = getZodiacSign(month, day)
       setZodiac(sign)
       
-      const pillar = getYearPillar(date)
-      setYearPillar(pillar)
+      const ec = getEightCharacters(date)
+      setEightChars(ec)
     }
   }
 
   const canProceed = () => {
     switch (step) {
-      case 1: return birthDate && zodiac && yearPillar.element
+      case 1: return birthDate && zodiac && eightChars?.day.element
       case 2: return budget
       default: return false
     }
@@ -48,9 +48,10 @@ export default function Onboarding() {
       const formData = {
         sunSign: zodiac,
         birthDate,
-        yearPillar,
+        yearPillar: eightChars?.year,
+        dayPillar: eightChars?.day,  // 使用日柱五行
         budget,
-        preferences: [] // 让AI根据五行自动判断
+        preferences: []
       }
       localStorage.setItem('crystalFormData', JSON.stringify(formData))
       router.push('/result')
@@ -67,7 +68,6 @@ export default function Onboarding() {
           返回首页
         </Link>
 
-        {/* 步骤指示器 */}
         <div className="flex items-center justify-center gap-2 mb-12">
           {[1, 2].map(s => (
             <div key={s} className="flex items-center">
@@ -82,7 +82,6 @@ export default function Onboarding() {
           ))}
         </div>
 
-        {/* 步骤1: 生日输入 */}
         {step === 1 && (
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-center mb-8">
@@ -104,7 +103,6 @@ export default function Onboarding() {
           </div>
         )}
 
-        {/* 步骤2: 预算选择 */}
         {step === 2 && (
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-center mb-8">
@@ -130,7 +128,6 @@ export default function Onboarding() {
           </div>
         )}
 
-        {/* 底部按钮 */}
         <div className="flex justify-between mt-12">
           <button
             onClick={() => setStep(step - 1)}
