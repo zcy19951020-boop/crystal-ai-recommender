@@ -44,47 +44,40 @@ const stemElements: { [key: string]: string } = {
   '壬': '水', '癸': '水'
 }
 
-// 地支对应五行
-const branchElements: { [key: string]: string } = {
-  '子': '水', '丑': '土',
-  '寅': '木', '卯': '木',
-  '辰': '土', '巳': '火',
-  '午': '火', '未': '土',
-  '申': '金', '酉': '金',
-  '戌': '土', '亥': '水'
-}
-
-// 计算儒略日
-function getJulianDay(year: number, month: number, day: number): number {
-  if (month <= 2) {
-    year -= 1
-    month += 12
-  }
-  const A = Math.floor(year / 100)
-  const B = 2 - A + Math.floor(A / 4)
-  return Math.floor(365.25 * (year + 4716)) + Math.floor(30.6001 * (month + 1)) + day + B - 1524.5
-}
-
-// 计算日柱（根据日干）
+// 计算日柱（标准方法：以1984-01-01为甲子日基准）
 export function getDayPillar(year: number, month: number, day: number): { stem: string, branch: string, element: string } {
-  // 已知1900年1月1日是辛丑日（天干索引6，地支索引1）
-  // 辛=8（在0-9系统中是6，因为甲=0，乙=1...辛=8，但公式中用0开始，所以辛=8-2=6？不对）
+  // 基准日期：1984年1月1日 = 甲子日
+  const baseYear = 1984
+  const baseMonth = 1
+  const baseDay = 1
   
-  // 让我用另一个方法：计算从已知日期的天数差
-  const knownDate = { year: 1900, month: 1, day: 1 }
-  const jd1 = getJulianDay(knownDate.year, knownDate.month, knownDate.day)
-  const jd2 = getJulianDay(year, month, day)
-  const daysDiff = Math.floor(jd2 - jd1)
+  // 计算距离基准日期的天数
+  // 使用简化方法：计算year-month-day距离1984-1-1的天数
+  const isLeapYear = (y: number) => (y % 4 === 0 && y % 100 !== 0) || (y % 400 === 0)
   
-  // 1900年1月1日是辛丑日
-  // 辛是第8个天干（甲1乙2丙3丁4戊5己6庚7辛8壬9癸10），但数组从0开始，所以辛的索引是7
-  // 丑是第2个地支（子1丑2寅3...），数组从0开始，丑的索引是1
+  const getDaysInYear = (y: number) => isLeapYear(y) ? 366 : 365
   
-  // 修正：甲=0, 乙=1, 丙=2, 丁=3, 戊=4, 己=5, 庚=6, 辛=7, 壬=8, 癸=9
-  // 子=0, 丑=1, 寅=2, 卯=3, 辰=4, 巳=5, 午=6, 未=7, 申=8, 酉=9, 戌=10, 亥=11
+  let days = 0
   
-  const stemIndex = (7 + daysDiff) % 10  // 辛丑日的天干索引
-  const branchIndex = (1 + daysDiff) % 12
+  // 计算从1984到year的天数差
+  for (let y = baseYear; y < year; y++) {
+    days += getDaysInYear(y)
+  }
+  
+  // 加上当年的天数
+  const monthsDays = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+  if (isLeapYear(year)) monthsDays[2] = 29
+  
+  for (let m = 1; m < month; m++) {
+    days += monthsDays[m]
+  }
+  
+  days += (day - baseDay)
+  
+  // 日柱60一循环，基准是1984-01-01为第0天（甲子）
+  const cycle = days % 60
+  const stemIndex = cycle % 10
+  const branchIndex = cycle % 12
   
   const stem = heavenlyStems[stemIndex]
   const branch = earthlyBranches[branchIndex]
@@ -93,32 +86,32 @@ export function getDayPillar(year: number, month: number, day: number): { stem: 
   return { stem, branch, element }
 }
 
-// 根据生日计算完整的八字（日柱为主）
+// 计算年柱
+export function getYearPillar(year: number): { stem: string, branch: string, element: string } {
+  const stem = heavenlyStems[(year - 4) % 10]
+  const branch = earthlyBranches[(year - 4) % 12]
+  const element = stemElements[stem]
+  return { stem, branch, element }
+}
+
+// 根据生日计算完整八字
 export function getEightCharacters(birthDate: string): { year: { stem: string, branch: string, element: string }, day: { stem: string, branch: string, element: string } } {
   const [year, month, day] = birthDate.split('-').map(Number)
   
-  // 年柱
-  const yearStem = heavenlyStems[(year - 4) % 10]
-  const yearBranch = earthlyBranches[(year - 4) % 12]
-  const yearElement = stemElements[yearStem]
-  
-  // 日柱
-  const dayPillar = getDayPillar(year, month, day)
-  
   return {
-    year: { stem: yearStem, branch: yearBranch, element: yearElement },
-    day: dayPillar
+    year: getYearPillar(year),
+    day: getDayPillar(year, month, day)
   }
 }
 
 // 获取五行喜忌建议（根据日柱）
 export function getFiveElementAdvice(element: string): string {
   const advice: { [key: string]: string } = {
-    '木': '你五行属木（日主为木），适合佩戴绿色/青色系水晶，如绿幽灵、绿发晶、海蓝宝、青金石',
-    '火': '你五行属火（日主为火），适合佩戴红色/紫色系水晶，如紫水晶、红玛瑙、石榴石、紫牙乌',
-    '土': '你五行属土（日主为土），适合佩戴黄色/棕色系水晶，如黄水晶、虎眼石、金发晶、钛晶',
-    '金': '你五行属金（日主为金），适合佩戴白色/金色系水晶，如白水晶、金发晶、钛晶、白幽灵',
-    '水': '你五行属水（日主为水），适合佩戴黑色/蓝色系水晶，如黑曜石、海蓝宝、蓝晶石、托帕石'
+    '木': '你日主属木，适合佩戴绿色/青色系水晶，如绿幽灵、绿发晶、海蓝宝、青金石',
+    '火': '你日主属火，适合佩戴红色/紫色系水晶，如紫水晶、红玛瑙、石榴石、紫牙乌',
+    '土': '你日主属土，适合佩戴黄色/棕色系水晶，如黄水晶、虎眼石、金发晶、钛晶',
+    '金': '你日主属金，适合佩戴白色/金色系水晶，如白水晶、金发晶、钛晶、白幽灵',
+    '水': '你日主属水，适合佩戴黑色/蓝色系水晶，如黑曜石、海蓝宝、蓝晶石、托帕石'
   }
   return advice[element] || '请根据具体情况选择适合自己的水晶'
 }
