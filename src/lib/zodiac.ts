@@ -15,6 +15,10 @@ export function getZodiacSign(month: number, day: number): string {
     { name: '双鱼座', start: [2, 19], end: [3, 20] },
   ]
   
+  // 摩羯座跨年
+  if (month === 12 && day >= 22) return '摩羯座'
+  if (month === 1 && day <= 19) return '摩羯座'
+  
   for (const sign of signs) {
     if (
       (month === sign.start[0] && day >= sign.start[1]) ||
@@ -23,55 +27,53 @@ export function getZodiacSign(month: number, day: number): string {
       return sign.name
     }
   }
-  // 摩羯座跨年
-  if (month === 12 && day >= 22) return '摩羯座'
-  if (month === 1 && day <= 19) return '摩羯座'
   
   return '未知'
 }
 
-// 天干计算
-function getHeavenlyStem(year: number): string {
-  const stems = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸']
-  return stems[(year - 4) % 10]
+// 天干列表
+const heavenlyStems = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸']
+// 地支列表
+const earthlyBranches = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']
+
+// 天干对应五行
+const stemElements: { [key: string]: string } = {
+  '甲': '木', '乙': '木',
+  '丙': '火', '丁': '火',
+  '戊': '土', '己': '土',
+  '庚': '金', '辛': '金',
+  '壬': '水', '癸': '水'
 }
 
-// 地支计算
-function getEarthlyBranch(year: number): string {
-  const branches = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']
-  return branches[(year - 4) % 12]
+// 地支对应五行
+const branchElements: { [key: string]: string } = {
+  '子': '水', '丑': '土',
+  '寅': '木', '卯': '木',
+  '辰': '土', '巳': '火',
+  '午': '火', '未': '土',
+  '申': '金', '酉': '金',
+  '戌': '土', '亥': '水'
 }
 
-// 五行计算 - 基于天干
-function getElementFromStem(stem: string): string {
-  const elements: { [key: string]: string } = {
-    '甲': '木', '乙': '木',
-    '丙': '火', '丁': '火',
-    '戊': '土', '己': '土',
-    '庚': '金', '辛': '金',
-    '壬': '水', '癸': '水'
-  }
-  return elements[stem] || '未知'
-}
-
-// 根据生日计算五行
-export function getFiveElement(birthDate: string): { stem: string, branch: string, element: string } {
+// 根据生日计算八字年柱
+export function getYearPillar(birthDate: string): { stem: string, branch: string, element: string } {
   const year = parseInt(birthDate.split('-')[0])
-  const stem = getHeavenlyStem(year)
-  const branch = getEarthlyBranch(year)
-  const element = getElementFromStem(stem)
+  
+  const stem = heavenlyStems[(year - 4) % 10]
+  const branch = earthlyBranches[(year - 4) % 12]
+  const element = stemElements[stem]
   
   return { stem, branch, element }
 }
 
-// 简化五行为喜忌建议
+// 获取五行喜忌建议
 export function getFiveElementAdvice(element: string): string {
   const advice: { [key: string]: string } = {
-    '木': '你五行属木，适合佩戴绿色/青色水晶，如绿幽灵、绿发晶、海蓝宝',
-    '火': '你五行属火，适合佩戴红色/紫色水晶，如紫水晶、红玛瑙、石榴石',
-    '土': '你五行属土，适合佩戴黄色/棕色水晶，如黄水晶、虎眼石、金发晶',
-    '金': '你五行属金，适合佩戴白色/金色水晶，如白水晶、金发晶、钛晶',
-    '水': '你五行属水，适合佩戴黑色/蓝色水晶，如黑曜石、海蓝宝、蓝晶石'
+    '木': '你五行属木（木性），适合佩戴绿色/青色系水晶，如绿幽灵、绿发晶、海蓝宝、青金石',
+    '火': '你五行属火（火性），适合佩戴红色/紫色系水晶，如紫水晶、红玛瑙、石榴石、紫牙乌',
+    '土': '你五行属土（土性），适合佩戴黄色/棕色系水晶，如黄水晶、虎眼石、金发晶、钛晶',
+    '金': '你五行属金（金属性），适合佩戴白色/金色系水晶，如白水晶、金发晶、钛晶、白幽灵',
+    '水': '你五行属水（水性），适合佩戴黑色/蓝色系水晶，如黑曜石、海蓝宝、蓝晶石、托帕石'
   }
-  return advice[element] || '请根据具体情况选择'
+  return advice[element] || '请根据具体情况选择适合自己的水晶'
 }

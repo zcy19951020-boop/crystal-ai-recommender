@@ -3,16 +3,8 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, ArrowRight, Check, Sparkles, Zap } from 'lucide-react'
-import { getZodiacSign, getFiveElement, getFiveElementAdvice } from '@/lib/zodiac'
-
-const preferenceOptions = [
-  { id: '财运', label: '💰 财运', desc: '提升收入、改善财务' },
-  { id: '爱情', label: '💕 爱情', desc: '桃花运、感情升温' },
-  { id: '事业', label: '🎯 事业', desc: '工作顺利、升职加薪' },
-  { id: '健康', label: '🧘 健康', desc: '改善睡眠、身体调养' },
-  { id: '学业', label: '📚 学业', desc: '考试运、学习效率' }
-]
+import { ArrowLeft, ArrowRight, Check, Sparkles } from 'lucide-react'
+import { getZodiacSign, getYearPillar } from '@/lib/zodiac'
 
 const budgetOptions = [
   { id: '入门级', label: '入门级', range: '¥100-300', desc: '小晶体/手串入门款' },
@@ -25,54 +17,40 @@ export default function Onboarding() {
   const [step, setStep] = useState(1)
   const [birthDate, setBirthDate] = useState('')
   const [zodiac, setZodiac] = useState('')
-  const [fiveElement, setFiveElement] = useState('')
-  const [fiveElementAdvice, setFiveElementAdvice] = useState('')
-  const [preferences, setPreferences] = useState<string[]>([])
+  const [yearPillar, setYearPillar] = useState({ stem: '', branch: '', element: '' })
   const [budget, setBudget] = useState('')
 
-  const totalSteps = 3
-
-  // 处理生日输入，自动计算星座和五行
+  // 处理生日输入
   const handleBirthDateChange = (date: string) => {
     setBirthDate(date)
     if (date) {
-      const [, month, day] = date.split('-').map(Number)
+      const parts = date.split('-')
+      const month = parseInt(parts[1])
+      const day = parseInt(parts[2])
       const sign = getZodiacSign(month, day)
       setZodiac(sign)
       
-      const element = getFiveElement(date)
-      setFiveElement(element.element)
-      setFiveElementAdvice(getFiveElementAdvice(element.element))
-    }
-  }
-
-  const togglePreference = (id: string) => {
-    if (preferences.includes(id)) {
-      setPreferences(preferences.filter(p => p !== id))
-    } else {
-      setPreferences([...preferences, id])
+      const pillar = getYearPillar(date)
+      setYearPillar(pillar)
     }
   }
 
   const canProceed = () => {
     switch (step) {
-      case 1: return birthDate && zodiac && fiveElement
-      case 2: return preferences.length > 0
-      case 3: return budget
+      case 1: return birthDate && zodiac && yearPillar.element
+      case 2: return budget
       default: return false
     }
   }
 
   const handleNext = () => {
-    if (step === totalSteps) {
+    if (step === 2) {
       const formData = {
         sunSign: zodiac,
         birthDate,
-        birthTime: '',
-        fiveElementAnswers: [fiveElement],
-        preferences,
+        yearPillar,
         budget,
-        fiveElementAdvice
+        preferences: [] // 让AI根据五行自动判断
       }
       localStorage.setItem('crystalFormData', JSON.stringify(formData))
       router.push('/result')
@@ -91,13 +69,13 @@ export default function Onboarding() {
 
         {/* 步骤指示器 */}
         <div className="flex items-center justify-center gap-2 mb-12">
-          {[1, 2, 3].map(s => (
+          {[1, 2].map(s => (
             <div key={s} className="flex items-center">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium
                 ${step >= s ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-400'}`}>
                 {step > s ? <Check className="w-4 h-4" /> : s}
               </div>
-              {s < totalSteps && (
+              {s < 2 && (
                 <div className={`w-16 h-0.5 ${step > s ? 'bg-purple-600' : 'bg-gray-700'}`} />
               )}
             </div>
@@ -108,12 +86,12 @@ export default function Onboarding() {
         {step === 1 && (
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-center mb-8">
-              输入生日，我们自动为你分析
+              输入你的出生日期
             </h2>
 
             <div className="card">
               <label className="block text-gray-400 mb-4 text-lg">
-                📅 你的出生日期（阳历）
+                📅 出生日期（阳历）
               </label>
               <input 
                 type="date" 
@@ -123,68 +101,11 @@ export default function Onboarding() {
                 style={{ fontSize: '1.5rem' }}
               />
             </div>
-
-            {zodiac && fiveElement && (
-              <div className="card bg-gradient-to-r from-purple-900/50 to-blue-900/50 border-purple-500/30">
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-2 mb-4">
-                    <Sparkles className="w-6 h-6 text-yellow-400" />
-                    <span className="text-yellow-400 font-semibold">分析结果</span>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-6 mb-4">
-                    <div className="bg-gray-800/50 rounded-xl p-4">
-                      <div className="text-gray-400 text-sm mb-1">星座</div>
-                      <div className="text-2xl font-bold text-white">{zodiac}</div>
-                    </div>
-                    <div className="bg-gray-800/50 rounded-xl p-4">
-                      <div className="text-gray-400 text-sm mb-1">五行</div>
-                      <div className="text-2xl font-bold text-white">{fiveElement}</div>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-gray-800/30 rounded-lg p-3 text-sm text-gray-300">
-                    {fiveElementAdvice}
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         )}
 
-        {/* 步骤2: 诉求选择 */}
+        {/* 步骤2: 预算选择 */}
         {step === 2 && (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-center mb-8">
-              你最关注哪个方面？
-            </h2>
-
-            <div className="grid grid-cols-1 gap-4">
-              {preferenceOptions.map(opt => (
-                <button
-                  key={opt.id}
-                  onClick={() => togglePreference(opt.id)}
-                  className={`p-5 rounded-xl text-left transition-all border flex items-center gap-4
-                    ${preferences.includes(opt.id) 
-                      ? 'bg-purple-600/20 border-purple-500' 
-                      : 'bg-gray-800/50 border-gray-700 hover:border-gray-600'}`}
-                >
-                  <span className="text-2xl">{opt.label.split(' ')[0]}</span>
-                  <div className="flex-1">
-                    <div className="font-medium text-lg">{opt.label.split(' ')[1]}</div>
-                    <div className="text-sm text-gray-400">{opt.desc}</div>
-                  </div>
-                  {preferences.includes(opt.id) && (
-                    <Check className="w-6 h-6 text-purple-400" />
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 步骤3: 预算选择 */}
-        {step === 3 && (
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-center mb-8">
               你的预算范围？
@@ -224,7 +145,7 @@ export default function Onboarding() {
             disabled={!canProceed()}
             className={`flex items-center gap-2 px-8 py-3 rounded-full font-medium ${canProceed() ? 'bg-purple-600 text-white hover:bg-purple-700' : 'bg-gray-700 text-gray-500 cursor-not-allowed'}`}
           >
-            {step === totalSteps ? '开始分析' : '下一步'}
+            {step === 2 ? '开始分析' : '下一步'}
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>
